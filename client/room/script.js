@@ -281,6 +281,10 @@ socket.on("connect", () => {
     resetGame();
   })
 
+  socket.on("err", msg => {
+    message.textContent = msg;
+  })
+
   socket.on("refresh", ()=>{
     if(t) {
       clearInterval(t);

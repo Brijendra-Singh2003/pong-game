@@ -44,16 +44,24 @@ io.on("connection", (socket) => {
         let myRoom = rooms.filter((room) => room.name === name)[0];
 
         if (myRoom) {
-            // return if room is full
-            if (myRoom.players.length > 1) return;
+            if(myRoom.pass === pass) {
+                // return if room is full
+                if (myRoom.players.length > 1) {
+                    socket.emit("err", "Room is Full");
+                    return;
+                }
 
-            const isPresent = myRoom.players.filter((id) => id === player)[0];
-            if (!isPresent) {
-                myRoom.players.push(player);
+                const isPresent = myRoom.players.filter((id) => id === player)[0];
+                if (!isPresent) {
+                    myRoom.players.push(player);
 
-                // game is ready to start
-                io.to(myRoom.players[0]).emit("ready", myRoom.players[1], true);
-                io.to(myRoom.players[1]).emit("ready", myRoom.players[0], false);
+                    // game is ready to start
+                    io.to(myRoom.players[0]).emit("ready", myRoom.players[1], true);
+                    io.to(myRoom.players[1]).emit("ready", myRoom.players[0], false);
+                }
+            } else {
+                socket.emit("err", "Incorrect Password");
+                return;
             }
         } else {
             // create room
@@ -102,6 +110,9 @@ app.use(express.static(__dirname + "/client"));
 
 const port = process.env.PORT || 80;
 
+// server.listen(3000, () => {
+//     console.log(`app live at: http://localhost:3000\nLet's Play 😎`);
+// });
 server.listen(port, () => {
     console.log(`app live at: http://localhost:${port}\nLet's Play 😎`);
 });
