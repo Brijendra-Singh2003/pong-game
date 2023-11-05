@@ -108,6 +108,10 @@ io.on("connection", (socket) => {
 
 app.use(express.static(__dirname + "/client"));
 
+app.all("*", (req, res) => {
+    res.sendFile(__dirname+"/client/404/");
+})
+
 const port = process.env.PORT || 80;
 
 // server.listen(3000, () => {

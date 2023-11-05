@@ -49,6 +49,10 @@ a {
     color: black;
 }
 
+h1 {
+    color: white;
+}
+
 input {
     text-indent: 20px;
     width: 80vw;

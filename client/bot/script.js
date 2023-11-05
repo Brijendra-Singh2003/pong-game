@@ -1,5 +1,3 @@
-const socket = io();
-
 // Canvas
 const { body } = document;
 const canvas = document.createElement("canvas");
@@ -33,7 +31,8 @@ const ballRadius = paddleHeight / 2;
 // Speed
 let speedY = 0;
 let speedX = 0;
-let trajectoryX;
+const defaultSpeed = 0.3 * paddleHeight;
+let computerSpeed = defaultSpeed;
 const maxBallSpeed = paddleHeight / 2;
 
 // Score
@@ -104,7 +103,6 @@ function createCanvas() {
         paddleBottomX = width - paddleWidth;
         startX = e.clientX - paddleBottomX;
       }
-      socket.emit("paddlemove", {paddleTopX: paddleBottomX / width});
     }
   })
 
@@ -127,7 +125,6 @@ function createCanvas() {
         paddleBottomX = width - paddleWidth;
         startX = currX - paddleBottomX;
       }
-      socket.emit("paddlemove", {paddleTopX: paddleBottomX / width});
   })
 
   window.addEventListener("keydown", (e) => {
@@ -142,15 +139,24 @@ function ballReset() {
   ballX = width / 2;
   ballY = height / 2;
   speedX = (Math.random()- 0.5)*-paddleHeight/4;
-  speedY = 0.3 * -paddleHeight;
-  broadcast();
+  speedY = defaultSpeed;
 }
 
-// Adjust Ball Movement
+// Adjust Ball Movement and computer paddle
 function moveBall() {
+  // ball
   ballY -= speedY;
   ballX += speedX;
-  // paddleTopX = ballX - paddleDiff;
+
+  // computer paddle
+  const newPaddleTopX = ballX - paddleDiff;
+  if(newPaddleTopX > paddleTopX + computerSpeed) {
+    paddleTopX += computerSpeed;
+  } else if(newPaddleTopX < paddleTopX - computerSpeed) {
+    paddleTopX -= computerSpeed;
+  } else {
+    paddleTopX = newPaddleTopX;
+  }
 }
 
 // Determine What Ball Bounces Off, Score Points, Reset Ball
@@ -173,14 +179,12 @@ function checkBallHit() {
 
       const trajectoryX = ballX - paddleBottomX - paddleDiff;
       speedX += trajectoryX * 0.3;
-      broadcast();
 
     } else if (ballY > height) {
       // Reset Ball, add to Computer Score
       computerScore++;
       gameOver();
       ballReset();
-      socket.emit("point");
     }
   }
   // Bounce off computer paddle (top)
@@ -195,8 +199,10 @@ function checkBallHit() {
       speedX += trajectoryX * 0.3;
     } else if (ballY < 0) {
       // Reset Ball, add to Player Score
-      // ballReset();
-      // playerScore++;
+      computerSpeed = computerSpeed * 1.75;
+      playerScore++;
+      gameOver();
+      ballReset();
     }
   }
 }
@@ -222,7 +228,6 @@ function showResult() {
 
 // Check If One Player Has Winning Score, If They Do, End Game
 function gameOver() {
-  console.log(playerScore, computerScore);
   if (playerScore === winningScore || computerScore === winningScore) {
     isGameOver = true;
     showResult();
@@ -242,7 +247,6 @@ function animate() {
 // Start Game, Reset Everything
 function resetGame() {
   if (isGameOver) {
-    socket.emit("restart");
     ballReset();
     body.removeChild(gameOverEl);
     canvas.hidden = false;
@@ -250,92 +254,11 @@ function resetGame() {
   isGameOver = false;
   playerScore = 0;
   computerScore = 0;
+  computerSpeed = defaultSpeed;
 }
 
 // On Load
 createCanvas();
-function start() {
-  resetGame();
-  animate();
-}
-// ballReset();
-// start();
-
-// ========================== WEB SOCKET EVENTS =========================== //
-
-socket.on("connect", () => {
-  console.log(socket.id); // x8WIv7-mJelg7on_ALbx
-
-  socket.on("paddlemove", (data) => {
-    paddleTopX = width - data.paddleTopX * width - paddleWidth;
-  });
-
-  socket.on("hit", (state) => {
-    ballX = width - state.ballX*width;
-    ballY = height - state.ballY*width;
-    speedX = -state.speedX*width;
-    speedY = -state.speedY*width;
-  });
-
-  socket.on("point", ()=>{
-    playerScore++;
-    gameOver();
-  })
-
-  socket.on("restart", ()=> {
-    body.removeChild(gameOverEl);
-    canvas.hidden = false;
-    isGameOver = false;
-    resetGame();
-  })
-
-  socket.on("err", msg => {
-    message.textContent = msg;
-  })
-
-  socket.on("refresh", ()=>{
-    if(t) {
-      clearInterval(t);
-    }
-    document.location = document.location;
-  })
-
-  const [name, pass] = document.location.search.split("&").map(e => e.split("=")[1]);
-  if(!name || !pass) {
-    document.location = document.location.origin+"/bot";
-  }
-
-  socket.emit("join", {name, pass, player: socket.id});
-
-  msgDiv.classList.add('game-over-container');
-
-  message.textContent = "waiting for opponent...";
-  // Append
-  msgDiv.append(message);
-  body.appendChild(msgDiv);
-
-  socket.on("ready", (id, service) => {
-    console.log("playing with: ", id);
-    let i = 3;
-    t = setInterval(() => {
-      if(i < 0) {
-        clearInterval(t);
-        socket.emit("play", id);
-        msgDiv.remove();
-        start();
-        if(service) {
-          ballReset();
-        }
-      } else {
-        message.textContent = i;
-        i--;
-      }
-    }, 1000);
-  })
-});
-
-function broadcast() {
-  const state = {ballX: ballX / width, ballY: ballY / width, speedX: speedX / width, speedY: speedY / width};
-  console.log(state);
-  socket.emit("hit", state);
-}
+resetGame();
+animate();
+ballReset();
