@@ -199,7 +199,7 @@ function checkBallHit() {
       speedX += trajectoryX * 0.3;
     } else if (ballY < 0) {
       // Reset Ball, add to Player Score
-      computerSpeed = computerSpeed * 1.75;
+      computerSpeed = computerSpeed * 1.5;
       playerScore++;
       gameOver();
       ballReset();
